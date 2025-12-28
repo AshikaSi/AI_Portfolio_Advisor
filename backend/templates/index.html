@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Future Portfolio Advisor</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+            background: #f5f7fa;
+        }
+        input, select, button {
+            padding: 8px;
+            margin: 8px 0;
+            width: 200px;
+        }
+        pre {
+            background: #111;
+            color: #0f0;
+            padding: 15px;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+
+<h1>📊 Future Portfolio Advisor</h1>
+
+<label>Initial Investment</label><br>
+<input id="investment" type="number" value="1000"><br>
+
+<label>Years</label><br>
+<input id="years" type="number" value="10"><br>
+
+<label>Risk Profile</label><br>
+<select id="risk">
+    <option value="conservative">Conservative</option>
+    <option value="balanced" selected>Balanced</option>
+    <option value="aggressive">Aggressive</option>
+</select><br>
+
+<button onclick="optimize()">Optimize</button>
+
+<h2>Portfolio Allocation</h2>
+<canvas id="weightsChart" width="400"></canvas>
+
+<h2>Monte Carlo Projection</h2>
+<canvas id="mcChart" width="600"></canvas>
+
+<h2>Summary</h2>
+<pre id="summary"></pre>
+
+<script>
+let weightsChart, mcChart;
+
+async function optimize() {
+    const payload = {
+        initial_investment: Number(document.getElementById("investment").value),
+        years: Number(document.getElementById("years").value),
+        risk_profile: document.getElementById("risk").value
+    };
+
+    const response = await fetch("/optimize", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    drawWeightsChart(data.portfolio.weights);
+    drawMonteCarlo(data.projection);
+    showSummary(data);
+}
+
+function drawWeightsChart(weights) {
+    const labels = Object.keys(weights);
+    const values = Object.values(weights);
+
+    if (weightsChart) weightsChart.destroy();
+
+    weightsChart = new Chart(
+        document.getElementById("weightsChart"),
+        {
+            type: "pie",
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values
+                }]
+            }
+        }
+    );
+}
+
+function drawMonteCarlo(projection) {
+    const labels = ["Worst 10%", "Median", "Best 90%"];
+    const values = [
+        projection.worst_10,
+        projection.median,
+        projection.best_90
+    ];
+
+    if (mcChart) mcChart.destroy();
+
+    mcChart = new Chart(
+        document.getElementById("mcChart"),
+        {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Final Portfolio Value",
+                    data: values
+                }]
+            }
+        }
+    );
+}
+
+function showSummary(data) {
+    document.getElementById("summary").textContent =
+        `Expected Return: ${(data.portfolio.expected_return * 100).toFixed(2)}%
+Volatility: ${(data.portfolio.volatility * 100).toFixed(2)}%
+Sharpe Ratio: ${data.portfolio.sharpe.toFixed(2)}`;
+}
+</script>
+
+
+</body>
+</html>
